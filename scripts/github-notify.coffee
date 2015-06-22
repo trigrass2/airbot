@@ -17,7 +17,7 @@
 # Author:
 #   jcombes
 
-_ = require 'underscore'
+_ = require 'lodash'
 team = try require process.env.HUBOT_TEAM_PATH
 
 # Extract all users which are mentioned in a comment
