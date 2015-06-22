@@ -8,7 +8,7 @@
 set -e
 
 # Environment
-. .airbotrc
+. ./.airbotrc
 
 # Run
 exec ./node_modules/hubot/bin/hubot --name airbot --adapter slack
