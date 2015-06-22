@@ -7,19 +7,8 @@
 
 set -e
 
-# Hubot port
-export PORT=8080
+# Environment
+. .airbotrc
 
-# File used to map Github users to team users
-export HUBOT_TEAM_PATH=team.json
-
-# API token for slack
-export HUBOT_SLACK_TOKEN=xoxb-5206362441-7XunIqnUIQNySgdGXJWmQRL9
-
-# Log level (DEBUG, ...)
-export ENV_HUBOT_LOG_LEVEL=
-
-#npm install
-#export PATH="node_modules/.bin:node_modules/hubot/node_modules/.bin:$PATH"
-
+# Run
 exec ./node_modules/hubot/bin/hubot --name airbot --adapter slack

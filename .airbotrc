@@ -1,0 +1,12 @@
+
+# Hubot port
+export PORT=8080
+
+# File used to map Github users to team users
+export HUBOT_TEAM_PATH=team.json
+
+# Hubot API token for slack
+export HUBOT_SLACK_TOKEN=
+
+# Log level (DEBUG, ...)
+export ENV_HUBOT_LOG_LEVEL=
