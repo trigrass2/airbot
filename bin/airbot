@@ -8,6 +8,7 @@
 set -e
 
 function start {
+    echo "Starting airbot ..."
     # Environment
     . ./.airbotrc
     # Run
@@ -18,6 +19,7 @@ function stop {
     local airbot_pid=`ps -ef | grep "\-\-name airbot" | awk '{print $2}'`
     if [ -n "$airbot_pid" ]
     then
+        echo "Stopping airbot (pid: $airbot_pid) ..."
         kill -9 $airbot_pid
     fi
 }
