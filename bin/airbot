@@ -1,14 +1,40 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Launch a hubot connected to a Slack
 #
-# Usage : ./bin/airbot
+# Usage : ./bin/airbot {start|stop|restart}
 #
 
 set -e
 
-# Environment
-. ./.airbotrc
+function start {
+    # Environment
+    . ./.airbotrc
+    # Run
+    exec ./node_modules/hubot/bin/hubot --name airbot --adapter slack
+}
 
-# Run
-exec ./node_modules/hubot/bin/hubot --name airbot --adapter slack
+function stop {
+    local airbot_pid=`ps -ef | grep "\-\-name airbot" | awk '{print $2}'`
+    if [ -n "$airbot_pid" ]
+    then
+        kill -9 $airbot_pid
+    fi
+}
+
+case $1 in
+    start )     start
+                ;;
+
+    stop )      stop
+                ;;
+
+    restart )   stop
+                start
+                ;;
+
+    * )         echo "Usage: $0 {start|stop|restart}" >&2
+                exit 1
+                ;;
+esac
+exit

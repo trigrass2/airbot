@@ -20,7 +20,7 @@ screen -S airbot
 ```
 5. Launch Hubot server
 ```bash
-./bin/airbot
+./bin/airbot start
 ```
 6. Quit the screen session
 ```bash
