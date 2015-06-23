@@ -17,3 +17,6 @@ curl -SLO "http://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.t
 sudo tar -xzf "node-v$NODE_VERSION-linux-x64.tar.gz" -C /usr/local --strip-components=1
 sudo rm "node-v$NODE_VERSION-linux-x64.tar.gz"
 sudo npm install -g npm@"$NPM_VERSION"
+
+echo "******** Install Coffee script ********"
+npm install -g coffee-script

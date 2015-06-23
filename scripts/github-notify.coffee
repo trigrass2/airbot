@@ -45,10 +45,6 @@ to_user = (github_user) ->
     user = team[github_user]
   else
     user = github_user
-    if team
-      for name, converter of team
-        if _.isObject(converter) and converter[github_user]
-          user = converter[github_user]
   user
 
 # Send a private message to multiple users.
@@ -70,18 +66,12 @@ private_messages = (robot, users, message) ->
 #
 # Returns nothing.
 private_message = (robot, user, message) ->
-  user = get_pm_user user
-  robot.send {room: to_user(user)}, message
-
-# Delete the reply_to information from a given User,
-# so that it is possible to force a private message on send.
-#
-# user - A User instance
-#
-# Returns nothing.
-get_pm_user = (user) ->
+  # Delete the reply_to information
   delete user.reply_to
-  user
+  try
+    robot.send {room: to_user(user)}, message
+  catch e
+    robot.logger.error "Error trying to send a message to #{user}"
 
 
 module.exports = (robot) ->

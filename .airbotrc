@@ -3,10 +3,10 @@
 export PORT=8080
 
 # File used to map Github users to team users
-export HUBOT_TEAM_PATH=team.json
+export HUBOT_TEAM_PATH=/home/ubuntu/airbot/team.json
 
 # Hubot API token for slack
-export HUBOT_SLACK_TOKEN=
+export HUBOT_SLACK_TOKEN=xxx
 
 # Log level (DEBUG, ...)
-export ENV_HUBOT_LOG_LEVEL=
+export HUBOT_LOG_LEVEL=
