@@ -6,23 +6,28 @@
 ## Usage
 
 1. Install packages
-```bash
-./install.sh
-```
+  ```bash
+  ./install.sh
+  ```
+
 2. Install Hubot library
-```bash
-npm install
-```
+  ```bash
+  npm install
+  ```
+
 3. Modify the file *.airbotrc* and configure the Hubot API token
+
 4. Launch Hubot server
-```bash
-forever start --uid "airbot" -a -c "/bin/bash" ./bin/airbot start
-```
+  ```bash
+  forever start --uid "airbot" -a -c "/bin/bash" ./bin/airbot start
+  ```
+
 5. List all running forever scripts
-```bash
-forever list
-```
+  ```bash
+  forever list
+  ```
+
 6. Stop Hubot server
-```bash
-forever stop airbot
-```
+  ```bash
+  forever stop airbot
+  ```
