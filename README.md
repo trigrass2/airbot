@@ -17,7 +17,7 @@ npm install
 4. Launch Hubot server
 ```bash
 forever start --uid "airbot" -a -c "/bin/bash" ./bin/airbot start
-``
+```
 5. List all running forever scripts
 ```bash
 forever list
