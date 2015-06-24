@@ -9,20 +9,20 @@
 ```bash
 ./install.sh
 ```
-2. Install hubot library
+2. Install Hubot library
 ```bash
 npm install
 ```
 3. Modify the file *.airbotrc* and configure the Hubot API token
-4. Open a screen session
+4. Launch Hubot server
 ```bash
-screen -S airbot
+forever start --uid "airbot" -a -c "/bin/bash" ./bin/airbot start
+``
+5. List all running forever scripts
+```bash
+forever list
 ```
-5. Launch Hubot server
+6. Stop Hubot server
 ```bash
-./bin/airbot start > airbot.log &
-```
-6. Quit the screen session
-```bash
-ctrl a+d
+forever stop airbot
 ```

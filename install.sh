@@ -18,5 +18,5 @@ sudo tar -xzf "node-v$NODE_VERSION-linux-x64.tar.gz" -C /usr/local --strip-compo
 sudo rm "node-v$NODE_VERSION-linux-x64.tar.gz"
 sudo npm install -g npm@"$NPM_VERSION"
 
-echo "******** Install Coffee script ********"
-npm install -g coffee-script
+echo "******** Install Coffee script and Forever ********"
+npm install -g coffee-script forever
