@@ -8,5 +8,8 @@ export HUBOT_TEAM_PATH=/home/ubuntu/airbot/team.json
 # Hubot API token for slack
 export HUBOT_SLACK_TOKEN=xxx
 
+# Github API Token
+export GITHUB_TOKEN=xxx
+
 # Log level (DEBUG, ...)
 export HUBOT_LOG_LEVEL=

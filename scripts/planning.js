@@ -6,8 +6,8 @@
 var got = require("got-promise");
 var BPromise = require("bluebird");
 var _ = require("lodash");
-var token = "1304013ce1783926ba2b702c3bc481a3cc6a89aa";
-var team = require("../team.json");
+var token = process.env.GITHUB_TOKEN;
+var team = require(process.env.HUBOT_TEAM_PATH);
 
 module.exports = function(robot) {
 
