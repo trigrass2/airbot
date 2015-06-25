@@ -8,5 +8,9 @@ export HUBOT_SLACK_TOKEN=xxx
 # Github API Token
 export GITHUB_TOKEN=xxx
 
+# JIRA API
+export JIRA_USER=xxx
+export JIRA_PWD=xxx
+
 # Log level (DEBUG, ...)
 export HUBOT_LOG_LEVEL=

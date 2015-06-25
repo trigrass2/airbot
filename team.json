@@ -7,5 +7,19 @@
     "KINFOO": "kkin-foo",
     "mbarrailh": "marianne",
     "rjacolin": "robert",
-    "tabenoza": "thomas"
+    "tabenoza": "thomas",
+    "jira": {
+        "slack": "jira",
+        "sebz": "smoran",
+        "arielle": "aruelle",
+        "fabienne": "flefevre",
+        "gaetan": "gmorice",
+        "helene": "hdebernard",
+        "alfredo": "aserrano",
+        "jvermillard": "jvermillar",
+        "jeremie": "jung",
+        "marianne": "mbarrailh",
+        "robert": "rjacolin",
+        "thomas": "tabenoza"
+    }
 }

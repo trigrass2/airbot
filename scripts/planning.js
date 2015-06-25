@@ -9,6 +9,10 @@ var _ = require("lodash");
 var token = process.env.GITHUB_TOKEN;
 var team = require("../team.json");
 
+var jiraCredUser = process.env.JIRA_USER;
+var jiraCredPwd = process.env.JIRA_PWD;
+var auth = new Buffer(jiraCredUser + ":" + jiraCredPwd).toString('base64');
+
 module.exports = function(robot) {
 
     robot.hear("planning", function(res) {
@@ -17,16 +21,29 @@ module.exports = function(robot) {
             room: user.name
         };
 
-        var greeting = ["Hi *<@", user.name, ">* gimme a minute to retrieve it."].join("");
+        var greeting = ["Hi *<@", user.name, ">* gimme a minute to retrieve it..."].join("");
         robot.send(room, greeting);
 
         var ghUser = getGithubUser(user.name);
-        getPlanning(ghUser)
-            .then(function(planningAttachment) {
+        var jiraUser = getJiraUser(user.name);
+
+        getGithubPlanning(ghUser)
+            .then(function(githubPlanning) {
+
                 robot.adapter.customMessage({
                     channel: user.name,
-                    text: "Your planning",
-                    attachments: planningAttachment
+                    text: "Here it is",
+                    attachments: githubPlanning
+                });
+
+                return getJiraPlanning(jiraUser);
+            })
+            .then(function(jiraPlanning) {
+
+                robot.adapter.customMessage({
+                    channel: user.name,
+                    text: "Wait... there's more!",
+                    attachments: jiraPlanning
                 });
             });
     });
@@ -46,10 +63,9 @@ function getGithubUser(slackUser) {
     return result;
 }
 
-
-function getPlanning(ghUser) {
+function getGithubPlanning(ghUser) {
     return getGithubIssues(ghUser)
-        .then(issues2Planning);
+        .then(github2Planning);
 }
 
 function getGithubIssues(user) {
@@ -57,7 +73,8 @@ function getGithubIssues(user) {
             json: true,
             headers: {
                 "accept": "application/vnd.github.v3+json",
-                "authorization": "token " + token
+                "authorization": "token " + token,
+                "user-agent": "https://github.com/AirVantage/airbot"
             }
         })
         .then(function(res) {
@@ -65,12 +82,12 @@ function getGithubIssues(user) {
         });
 }
 
-function issues2Planning(issues) {
+function github2Planning(issues) {
     return new BPromise(function(resolve) {
         var message = "";
         var repositories = {};
         _.each(issues, function(issue) {
-            var repoName = getRepository(issue);
+            var repoName = getGithubRepository(issue);
             if (!repositories[repoName]) {
                 repositories[repoName] = {
                     prs: [],
@@ -89,13 +106,13 @@ function issues2Planning(issues) {
 
             if (issues.prs.length > 0) {
                 _.each(issues.prs, function(issue) {
-                    message += "\t ⎇ <" + issue.html_url + "|#" + issue.number + "-" + issue.title + ">\n";
+                    message += "\t ⎇ <" + issue.html_url + "|#" + issue.number + "> " + issue.title + "\n";
                 });
             }
 
             if (issues.issues.length > 0) {
                 _.each(issues.issues, function(issue) {
-                    message += "\t 𐌏 <" + issue.html_url + "|#" + issue.number + "-" + issue.title + ">\n";
+                    message += "\t 𐌏 <" + issue.html_url + "|#" + issue.number + "> " + issue.title + "\n";
                 });
             }
 
@@ -112,7 +129,7 @@ function issues2Planning(issues) {
     });
 }
 
-function getRepository(issueUrl) {
+function getGithubRepository(issueUrl) {
     var split = issueUrl.html_url.split("/");
     var repository = "unknown";
 
@@ -121,4 +138,82 @@ function getRepository(issueUrl) {
     }
 
     return repository;
+}
+
+function getJiraUser(slackUser) {
+    var result = slackUser;
+
+    if (team.jira[slackUser]) {
+        result = team.jira[slackUser];
+    }
+
+    return result;
+}
+
+function getJiraPlanning(jiraUser) {
+    return getJiraIssues(jiraUser)
+        .then(jira2Planning);
+}
+
+function getJiraIssues(jiraUser) {
+
+    var query = "assignee=" + jiraUser + " AND status in (Open, Incomplete, Reopened) ORDER BY priority DESC";
+    return got("https://issues.sierrawireless.com/rest/api/2/search?jql=" + query, {
+            json: true,
+            headers: {
+                "Authorization": "Basic " + auth,
+                "user-agent": "https://github.com/AirVantage/airbot"
+            }
+        })
+        .then(function(res) {
+            return res.body.issues;
+        });
+}
+
+function jira2Planning(issues) {
+    return new BPromise(function(resolve) {
+        var message = "";
+        var projects = {};
+        _.each(issues, function(issue) {
+            var projectName = getJiraProject(issue);
+            if (!projects[projectName]) {
+                projects[projectName] = [];
+            }
+            projects[projectName].push(issue);
+        });
+
+        _.each(projects, function(issues, project) {
+            message += " _" + project + "_\n";
+            if (issues.length > 0) {
+                _.each(issues, function(issue) {
+                    message += "\t 𐌏 <" + getJiraIssueUrl(issue) + "|" + issue.key + "> " + issue.fields.summary + "\n";
+                });
+            }
+        });
+
+        resolve([{
+            fallback: "https://issues.sierrawireless.com/issues/?filter=-1",
+            title: "JIRA",
+            text: message,
+            color: "#e43a2f",
+            mrkdwn_in: ["text"]
+        }]);
+
+    });
+}
+
+
+function getJiraProject(issue) {
+    var split = issue.key.split("-");
+    var repository = "unknown";
+
+    if (split.length > 1) {
+        repository = split[0];
+    }
+
+    return repository;
+}
+
+function getJiraIssueUrl(issue) {
+    return "https://issues.sierrawireless.com/browse/" + issue.key;
 }
