@@ -157,7 +157,7 @@ function getJiraPlanning(jiraUser) {
 
 function getJiraIssues(jiraUser) {
 
-    var query = "assignee=" + jiraUser + " AND status in (Open, Incomplete, Reopened) ORDER BY priority DESC";
+    var query = "assignee=" + jiraUser + " AND status in (Open, Incomplete, Reopened, \"In Progress\") ORDER BY priority DESC";
     return got("https://issues.sierrawireless.com/rest/api/2/search?jql=" + query, {
             json: true,
             headers: {
