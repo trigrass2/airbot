@@ -5,7 +5,7 @@
 
 var got = require("got-promise");
 var BPromise = require("bluebird");
-var _ = require("underscore");
+var _ = require("lodash");
 var token = "1304013ce1783926ba2b702c3bc481a3cc6a89aa";
 var team = require("../team.json");
 
