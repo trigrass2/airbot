@@ -5,11 +5,6 @@
 #   "lodash": "^3.2.0"
 #
 # Configuration:
-#   HUBOT_TEAM_URL  - (Optional) The URL of your team. (e.g.: https://my.slack.com/team/)
-#   HUBOT_TEAM_PATH - (Optional) If you want to convert GitHub's `@` mention to another services's (Slack and etc.) mention, you can specify a json file to describe the conversion rule.
-#      {
-#        "github_user": "slack_user"
-#      }
 #
 #   Put this url <HUBOT_URL>:<PORT>/hubot/gh-notify into your GitHub Webhooks
 #   and enable 'issues', 'pull_request', 'issue_comment' and 'pull_request_review_comment' as events to receive.
@@ -18,7 +13,8 @@
 #   jcombes
 
 _ = require 'lodash'
-team = try require process.env.HUBOT_TEAM_PATH
+team = require '../team.json'
+
 msg_color = "#7CD197"
 gh_logo_url = "http://static.airvantage.io/img/gitHub-octocat-200x166.png"
 
