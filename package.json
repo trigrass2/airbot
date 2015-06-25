@@ -5,6 +5,7 @@
   "description": "AirVantage bot",
   "dependencies": {
     "bluebird": "^2.9.30",
+    "chrono-node": "^1.0.6",
     "got-promise": "^4.1.0",
     "hubot": "^2.13.2",
     "hubot-diagnostics": "0.0.1",
@@ -19,7 +20,8 @@
     "hubot-scripts": "^2.16.1",
     "hubot-shipit": "^0.2.0",
     "hubot-slack": "^3.3.0",
-    "lodash": "^3.2.0"
+    "lodash": "^3.2.0",
+    "moment": "^2.10.3"
   },
   "engines": {
     "node": "0.10.x"
