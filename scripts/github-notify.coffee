@@ -15,7 +15,7 @@
 _ = require 'lodash'
 team = require '../team.json'
 
-msg_color = "#7CD197"
+default_msg_color = "#7CD197"
 gh_logo_url = "http://static.airvantage.io/img/gitHub-octocat-200x166.png"
 
 # Extract all users which are mentioned in a comment
@@ -70,6 +70,74 @@ private_message = (robot, user, message) ->
   catch e
     robot.logger.error "Error trying to send a message to #{user}"
 
+# Build a slack message
+#
+# msg - object containing information to be used to build the message
+# {
+#   text: "",
+#   fallback: "",
+#   title: "",
+#   title_link: "",
+#   repository: "",
+#   mentioned_by: "",
+#   assigned_by: "",
+#   author: "",
+#   message: "",
+#   author_name: "",
+#   author_link: "",
+#   author_icon: "",
+#   color: "",
+#   thumb_url: ""
+# }
+#
+# Returns the message with the slack format.
+build_slack_message = (msg) ->
+  fields = []
+  if (msg.repository)
+    fields.push({
+      title: "Repository",
+      value: msg.repository,
+      short: false
+    })
+  if (msg.mentioned_by)
+    fields.push({
+      title: "Mentioned By",
+      value: msg.mentioned_by,
+      short: false
+    })
+  if (msg.assigned_by)
+    fields.push({
+      title: "Assigned By",
+      value: msg.assigned_by,
+      short: false
+    })
+  if (msg.author)
+    fields.push({
+      title: "Author",
+      value: msg.author,
+      short: false
+    })
+  if (msg.message)
+    fields.push({
+      title: "Message",
+      value: msg.message,
+      short: false
+    })
+  
+  {
+    text: msg.text
+    attachments: [
+      fallback: msg.fallback,
+      title: msg.title,
+      title_link: msg.title_link,
+      fields: fields,
+      author_name: msg.author_name,
+      author_link: msg.author_link,
+      author_icon: msg.author_icon,
+      color: if msg.color then  msg.color else default_msg_color,
+      thumb_url: if msg.thumb_url then  msg.thumb_url else gh_logo_url
+    ]
+  }
 
 module.exports = (robot) ->
 
@@ -87,116 +155,83 @@ module.exports = (robot) ->
       else
         issue = payload.pull_request
         event_type = 'pull request'
+
       mentioned_by = to_user(issue.user.login)
       userInfos = extract_mentions(issue.body)
       message = {
-        text: ":octocat: - You have been *mentioned* in a new *#{event_type}*"
-        attachments: [
-          {
-            fallback: "You have been mentioned in a new #{event_type} by #{mentioned_by} in #{payload.repository.full_name}: #{issue.html_url}.",
-            title: "#{issue.title}",
-            title_link: "#{issue.html_url}",
-            fields: [
-                {
-                    title: "Repository",
-                    value: "#{payload.repository.full_name}",
-                    short: false
-                },
-                {
-                    title: "Mentioned by",
-                    value: "<@#{mentioned_by}>",
-                    short: false
-                },
-                {
-                    title: "Message",
-                    value: issue.body,
-                    short: false
-                }
-            ],
-            "color": msg_color,
-            "thumb_url": gh_logo_url
-          }
-        ]
+        text: ":octocat: - You have been *mentioned* in a new *#{event_type}*",
+        fallback: "You have been mentioned in a new #{event_type} by #{mentioned_by} in #{payload.repository.full_name}: #{issue.html_url}.",
+        title: "#{issue.title}",
+        title_link: "#{issue.html_url}",
+        repository: "#{payload.repository.full_name}",
+        mentioned_by: "<@#{mentioned_by}>",
+        message: issue.body,
+        thumb_url: issue.user.avatar_url
       }
-      private_messages robot, userInfos, message
+      private_messages robot, userInfos, build_slack_message(message)
 
     else if ((event is 'issue_comment' or event is 'pull_request_review_comment') and payload.action is 'created')
       if event is 'issue_comment'
         issue = payload.issue
-        event_type = 'an *issue*'
-        event_type_raw = 'an issue'
+        event_type = 'issue'
+        event_type_prefix = 'an'
       else
         issue = payload.pull_request
-        event_type = 'a *pull request*'
-        event_type_raw = 'a pull request'
+        event_type = 'pull request'
+        event_type_prefix = 'a'
+
       mentioned_by = to_user(payload.comment.user.login)
       userInfos = extract_mentions(payload.comment.body)
       message = {
-        text: ":octocat: - You have been *mentioned* in #{event_type}"
-        attachments: [
-          {
-            fallback: "You have been mentioned in #{event_type_raw} by #{mentioned_by} in #{payload.repository.full_name}: #{payload.comment.html_url}.",
-            title: "#{issue.title}",
-            title_link: "#{payload.comment.html_url}",
-            fields: [
-                {
-                    title: "Repository",
-                    value: "#{payload.repository.full_name}",
-                    short: false
-                },
-                {
-                    title: "Mentioned by",
-                    value: "<@#{mentioned_by}>",
-                    short: false
-                },
-                {
-                    title: "Message",
-                    value: payload.comment.body,
-                    short: false
-                }
-            ],
-            "color": msg_color,
-            "thumb_url": gh_logo_url
-          }
-        ]
+        text: ":octocat: - You have been *mentioned* in #{event_type_prefix} *#{event_type}*",
+        fallback: "You have been mentioned in #{event_type_prefix} #{event_type} by #{mentioned_by} in #{payload.repository.full_name}: #{payload.comment.html_url}.",
+        title: "#{issue.title}",
+        title_link: "#{payload.comment.html_url}",
+        repository: "#{payload.repository.full_name}",
+        mentioned_by: "<@#{mentioned_by}>",
+        message: payload.comment.body,
+        thumb_url: payload.comment.user.avatar_url
       }
-      private_messages robot, userInfos, message
+      private_messages robot, userInfos, build_slack_message(message)
+
+      # Notify the owner if not mentioned and if he is not the sender
+      owner = issue.user.login
+      if (owner != payload.comment.user.login and not _.includes(userInfos, owner))
+        message = {
+          text: ":octocat: - New comment in your *#{event_type}*",
+          fallback: "A comment has been added in your #{event_type} by #{mentioned_by} in #{payload.repository.full_name}: #{payload.comment.html_url}.",
+          title: "#{issue.title}",
+          title_link: "#{payload.comment.html_url}",
+          repository: "#{payload.repository.full_name}",
+          author: "<@#{mentioned_by}>",
+          message: payload.comment.body,
+          thumb_url: payload.comment.user.avatar_url
+        }
+        private_messages robot, [ owner ], build_slack_message(message)
 
     else if ((event is 'issues' or event is 'pull_request') and payload.action is 'assigned')
       if event is 'issues'
         issue = payload.issue
-        event_type = 'an *issue*'
-        event_type_raw = 'an issue'
+        event_type = 'issue'
+        event_type_prefix = 'an'
       else
         issue = payload.pull_request
-        event_type = 'a pull *request*'
-        event_type_raw = 'a pull request'
-      assigned_by = to_user(payload.sender.login)
-      userInfos = [ payload.assignee.login ] if payload.assignee.login
-      message = {
-        text: ":octocat: - You have been *assigned* to #{event_type}"
-        attachments: [
-          {
-            fallback: "You have been assigned to #{event_type_raw} by #{assigned_by} in #{payload.repository.full_name}: #{issue.html_url}.",
-            title: "#{issue.title}",
-            title_link: "#{issue.html_url}",
-            fields: [
-                {
-                    title: "Repository",
-                    value: "#{payload.repository.full_name}",
-                    short: false
-                },
-                {
-                    title: "Assigned by",
-                    value: "<@#{assigned_by}>",
-                    short: false
-                }
-            ],
-            "color": msg_color,
-            "thumb_url": gh_logo_url
-          }
-        ]
-      }
-      private_messages robot, userInfos, message
+        event_type = 'pull request'
+        event_type_prefix = 'a'
+
+      # Notify only if the assigned user is not the sender
+      assignedUser = payload.assignee.login
+      if (payload.sender.login != assignedUser)
+        assigned_by = to_user(payload.sender.login)
+        message = {
+          text: ":octocat: - You have been *assigned* to #{event_type_prefix} *#{event_type}*",
+          fallback: "You have been assigned to #{event_type_prefix} #{event_type} by #{assigned_by} in #{payload.repository.full_name}: #{issue.html_url}.",
+          title: "#{issue.title}",
+          title_link: "#{issue.html_url}",
+          repository: "#{payload.repository.full_name}",
+          assigned_by: "<@#{assigned_by}>",
+          thumb_url: payload.sender.avatar_url
+        }
+        private_messages robot, [ assignedUser ], build_slack_message(message)
 
     res.send 'HOLO YOLO'
