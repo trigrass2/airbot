@@ -4,6 +4,8 @@
   "private": true,
   "description": "AirVantage bot",
   "dependencies": {
+    "bluebird": "^2.9.30",
+    "got-promise": "^4.1.0",
     "hubot": "^2.13.2",
     "hubot-diagnostics": "0.0.1",
     "hubot-google-images": "^0.1.5",
