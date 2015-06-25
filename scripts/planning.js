@@ -11,7 +11,7 @@ var team = require("../team.json");
 
 module.exports = function(robot) {
 
-    robot.hear("/planning/i", function(res) {
+    robot.hear("planning", function(res) {
         var user = res.message.user;
         var room = {
             room: user.name
