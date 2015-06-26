@@ -3,52 +3,85 @@
  *     Get your daily planning
  */
 
-var got = require("got-promise");
-var BPromise = require("bluebird");
 var _ = require("lodash");
+var got = require("got-promise");
+var schedule = require('node-schedule');
+var BPromise = require("bluebird");
+
 var token = process.env.GITHUB_TOKEN;
 var team = require("../team.json");
 
 var jiraCredUser = process.env.JIRA_USER;
 var jiraCredPwd = process.env.JIRA_PWD;
 var auth = new Buffer(jiraCredUser + ":" + jiraCredPwd).toString('base64');
+var airbot;
 
 module.exports = function(robot) {
+    airbot = robot;
 
-    robot.hear("planning", function(res) {
+    // Monday => Friday at 8am.
+    var rule = new schedule.RecurrenceRule();
+    rule.dayOfWeek = [new schedule.Range(1, 5)];
+    rule.hour = 8;
+    rule.minute = 0;
+
+    // Daily planning
+    schedule.scheduleJob(rule, sendPlanningToEachUser);
+
+    // On demand planning
+    airbot.respond("/planning/i", function(res) {
         var user = res.message.user;
         var room = {
             room: user.name
         };
 
         var greeting = ["Hi *<@", user.name, ">* gimme a minute to retrieve it..."].join("");
-        robot.send(room, greeting);
+        airbot.send(room, greeting);
 
-        var ghUser = getGithubUser(user.name);
-        var jiraUser = getJiraUser(user.name);
-
-        getGithubPlanning(ghUser)
-            .then(function(githubPlanning) {
-
-                robot.adapter.customMessage({
-                    channel: user.name,
-                    text: "Here it is",
-                    attachments: githubPlanning
-                });
-
-                return getJiraPlanning(jiraUser);
-            })
-            .then(function(jiraPlanning) {
-
-                robot.adapter.customMessage({
-                    channel: user.name,
-                    text: "Wait... there's more!",
-                    attachments: jiraPlanning
-                });
-            });
+        getFullPlanning(user);
     });
 
 };
+
+function sendPlanningToEachUser() {
+    _.each(getDailyPlanningSubscribers(), function(user) {
+        var greeting = [":alarm_clock: Good morning *<@", user.name, ">*, I'm just finishing to compile your planning..."].join("");
+        console.log(greeting);
+        airbot.send({
+            room: user.name
+        }, greeting);
+
+        getFullPlanning(user);
+    });
+}
+
+function getDailyPlanningSubscribers() {
+    // Get all Slack users
+    return airbot.brain.usersForFuzzyName("");
+}
+
+function getFullPlanning(user) {
+    var ghUser = getGithubUser(user.name);
+    var jiraUser = getJiraUser(user.name);
+
+    getGithubPlanning(ghUser)
+        .then(function(githubPlanning) {
+            airbot.adapter.customMessage({
+                channel: user.name,
+                text: "Here it is",
+                attachments: githubPlanning
+            });
+
+            return getJiraPlanning(jiraUser);
+        })
+        .then(function(jiraPlanning) {
+            airbot.adapter.customMessage({
+                channel: user.name,
+                text: "Wait... there's more!",
+                attachments: jiraPlanning
+            });
+        });
+}
 
 function getGithubUser(slackUser) {
     var result = slackUser;
@@ -79,10 +112,18 @@ function getGithubIssues(user) {
         })
         .then(function(res) {
             return res.body.items;
+        })
+        .catch(function(err) {
+            console.log("No github planning for '", user, "'");
         });
 }
 
 function github2Planning(issues) {
+
+    if (!issues) {
+        return BPromise.resolve();
+    }
+
     return new BPromise(function(resolve) {
         var message = "";
         var repositories = {};
