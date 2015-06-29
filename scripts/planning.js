@@ -1,5 +1,5 @@
 /**
- * Description: 
+ * Description:
  *     Get your daily planning
  */
 
@@ -14,7 +14,9 @@ var team = require("../team.json");
 var jiraCredUser = process.env.JIRA_USER;
 var jiraCredPwd = process.env.JIRA_PWD;
 var auth = new Buffer(jiraCredUser + ":" + jiraCredPwd).toString('base64');
+var blacklist = ["airbot", "air2d2", "slackbot"];
 var airbot;
+var debug = false;
 
 module.exports = function(robot) {
     airbot = robot;
@@ -22,7 +24,7 @@ module.exports = function(robot) {
     // Monday => Friday at 8am.
     var rule = new schedule.RecurrenceRule();
     rule.dayOfWeek = [new schedule.Range(1, 5)];
-    rule.hour = 8;
+    rule.hour = 7;
     rule.minute = 0;
 
     // Daily planning
@@ -30,28 +32,71 @@ module.exports = function(robot) {
 
     // On demand planning
     airbot.respond("/planning/i", function(res) {
-        var user = res.message.user;
-        var room = {
-            room: user.name
-        };
+        sendPlanningToEachUser();
+        var username = res.message.user.name;
 
-        var greeting = ["Hi *<@", user.name, ">* gimme a minute to retrieve it..."].join("");
-        airbot.send(room, greeting);
+        var greeting = ["Hi *<@", username,
+            ">* gimme a minute to retrieve it..."
+        ].join("");
+        sendMessage(username, greeting);
 
-        getFullPlanning(user);
+        getFullPlanning(username);
     });
 
 };
 
 function sendPlanningToEachUser() {
-    _.each(getDailyPlanningSubscribers(), function(user) {
-        var greeting = [":alarm_clock: Good morning *<@", user.name, ">*, I'm just finishing to compile your planning..."].join("");
-        console.log(greeting);
-        airbot.send({
-            room: user.name
-        }, greeting);
+    var allUsers = getDailyPlanningSubscribers();
 
-        getFullPlanning(user);
+    var planningTasks = _.map(allUsers, function(user) {
+        var username = user.name;
+        console.log("Build planning task for:", username);
+        if (_.contains(blacklist, username)) {
+            return function() {
+                console.log("Nothing to build for:", username);
+                return BPromise.resolve();
+            };
+        }
+
+        return function() {
+            var greeting = [":alarm_clock: Good morning *<@", username,
+                ">*, I'm just finishing to compile your planning..."
+            ].join("");
+            return greetUser(username, greeting)
+                .then(function() {
+                    return getFullPlanning(username);
+                })
+                .then(function() {
+                    console.log("Wait for 1sec..");
+                    return new BPromise(function(resolve) {
+                        setTimeout(function() {
+                            resolve();
+                        }, 1000);
+                    });
+                })
+                .catch(function(e) {
+                    console.error("Error sending message to", username, "=>", e);
+                });
+        };
+    });
+
+    BPromise.resolve(planningTasks).each(function(task) {
+            return task();
+        })
+        .then(function() {
+            console.log("All done");
+        });
+}
+
+function greetUser(username, message) {
+    return new BPromise(function(resolve, reject) {
+        try {
+            sendMessage(username, message);
+        } catch (e) {
+            reject(e);
+            return;
+        }
+        resolve();
     });
 }
 
@@ -60,26 +105,17 @@ function getDailyPlanningSubscribers() {
     return airbot.brain.usersForFuzzyName("");
 }
 
-function getFullPlanning(user) {
-    var ghUser = getGithubUser(user.name);
-    var jiraUser = getJiraUser(user.name);
+function getFullPlanning(username) {
+    var ghUser = getGithubUser(username);
+    var jiraUser = getJiraUser(username);
 
-    getGithubPlanning(ghUser)
+    return getGithubPlanning(ghUser)
         .then(function(githubPlanning) {
-            airbot.adapter.customMessage({
-                channel: user.name,
-                text: "Here it is",
-                attachments: githubPlanning
-            });
-
+            sendCustomMessage(username, "Here it is", githubPlanning);
             return getJiraPlanning(jiraUser);
         })
         .then(function(jiraPlanning) {
-            airbot.adapter.customMessage({
-                channel: user.name,
-                text: "Wait... there's more!",
-                attachments: jiraPlanning
-            });
+            sendCustomMessage(username, "Wait... there's more!", jiraPlanning);
         });
 }
 
@@ -102,14 +138,15 @@ function getGithubPlanning(ghUser) {
 }
 
 function getGithubIssues(user) {
-    return got("https://api.github.com/search/issues?q=state:open+assignee:" + user, {
-            json: true,
-            headers: {
-                "accept": "application/vnd.github.v3+json",
-                "authorization": "token " + token,
-                "user-agent": "https://github.com/AirVantage/airbot"
-            }
-        })
+    return got("https://api.github.com/search/issues?q=state:open+assignee:" +
+            user, {
+                json: true,
+                headers: {
+                    "accept": "application/vnd.github.v3+json",
+                    "authorization": "token " + token,
+                    "user-agent": "https://github.com/AirVantage/airbot"
+                }
+            })
         .then(function(res) {
             return res.body.items;
         })
@@ -147,13 +184,17 @@ function github2Planning(issues) {
 
             if (issues.prs.length > 0) {
                 _.each(issues.prs, function(issue) {
-                    message += "\t ⎇ <" + issue.html_url + "|#" + issue.number + "> " + issue.title + "\n";
+                    message += "\t ⎇ <" + issue.html_url +
+                        "|#" + issue.number + "> " +
+                        issue.title + "\n";
                 });
             }
 
             if (issues.issues.length > 0) {
                 _.each(issues.issues, function(issue) {
-                    message += "\t 𐌏 <" + issue.html_url + "|#" + issue.number + "> " + issue.title + "\n";
+                    message += "\t 𐌏 <" + issue.html_url +
+                        "|#" + issue.number + "> " +
+                        issue.title + "\n";
                 });
             }
 
@@ -198,14 +239,16 @@ function getJiraPlanning(jiraUser) {
 
 function getJiraIssues(jiraUser) {
 
-    var query = "assignee=" + jiraUser + " AND status in (Open, Incomplete, Reopened, \"In Progress\") ORDER BY priority DESC";
-    return got("https://issues.sierrawireless.com/rest/api/2/search?jql=" + query, {
-            json: true,
-            headers: {
-                "Authorization": "Basic " + auth,
-                "user-agent": "https://github.com/AirVantage/airbot"
-            }
-        })
+    var query = "assignee=" + jiraUser +
+        " AND status in (Open, Incomplete, Reopened, \"In Progress\") ORDER BY priority DESC";
+    return got("https://issues.sierrawireless.com/rest/api/2/search?jql=" +
+            query, {
+                json: true,
+                headers: {
+                    "Authorization": "Basic " + auth,
+                    "user-agent": "https://github.com/AirVantage/airbot"
+                }
+            })
         .then(function(res) {
             return res.body.issues;
         });
@@ -227,7 +270,10 @@ function jira2Planning(issues) {
             message += " _" + project + "_\n";
             if (issues.length > 0) {
                 _.each(issues, function(issue) {
-                    message += "\t 𐌏 <" + getJiraIssueUrl(issue) + "|" + issue.key + "> " + issue.fields.summary + "\n";
+                    message += "\t 𐌏 <" +
+                        getJiraIssueUrl(issue) + "|" +
+                        issue.key + "> " + issue.fields
+                        .summary + "\n";
                 });
             }
         });
@@ -257,4 +303,26 @@ function getJiraProject(issue) {
 
 function getJiraIssueUrl(issue) {
     return "https://issues.sierrawireless.com/browse/" + issue.key;
+}
+
+function sendMessage(username, message) {
+    if (debug) {
+        console.log("@" + username, ":", message);
+    } else {
+        airbot.send({
+            room: username
+        }, message);
+    }
+}
+
+function sendCustomMessage(username, title, content) {
+    if (debug) {
+        console.log("@" + username, "->", title);
+    } else {
+        airbot.adapter.customMessage({
+            channel: username,
+            text: title,
+            attachments: content
+        });
+    }
 }
