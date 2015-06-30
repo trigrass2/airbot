@@ -14,3 +14,6 @@ export JIRA_PWD=xxx
 
 # Log level (DEBUG, ...)
 export HUBOT_LOG_LEVEL=
+
+# Planning
+export AIRBOT_PLANNING_DEBUG=false

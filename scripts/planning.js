@@ -16,7 +16,7 @@ var jiraCredPwd = process.env.JIRA_PWD;
 var auth = new Buffer(jiraCredUser + ":" + jiraCredPwd).toString('base64');
 var blacklist = ["airbot", "air2d2", "slackbot"];
 var airbot;
-var debug = false;
+var debug = process.env.AIRBOT_PLANNING_DEBUG;
 
 module.exports = function(robot) {
     airbot = robot;
@@ -28,11 +28,11 @@ module.exports = function(robot) {
     rule.minute = 0;
 
     // Daily planning
+    airbot.logger.debug("Scheduling daily planning");
     schedule.scheduleJob(rule, sendPlanningToEachUser);
 
     // On demand planning
     airbot.respond("/planning/i", function(res) {
-        sendPlanningToEachUser();
         var username = res.message.user.name;
 
         var greeting = ["Hi *<@", username,
@@ -50,10 +50,10 @@ function sendPlanningToEachUser() {
 
     var planningTasks = _.map(allUsers, function(user) {
         var username = user.name;
-        console.log("Build planning task for:", username);
+        airbot.logger.debug("Build planning task for:", username);
         if (_.contains(blacklist, username)) {
             return function() {
-                console.log("Nothing to build for:", username);
+                airbot.logger.debug("Nothing to build for:", username);
                 return BPromise.resolve();
             };
         }
@@ -67,7 +67,7 @@ function sendPlanningToEachUser() {
                     return getFullPlanning(username);
                 })
                 .then(function() {
-                    console.log("Wait for 1sec..");
+                    airbot.logger.debug("Wait for 1sec..");
                     return new BPromise(function(resolve) {
                         setTimeout(function() {
                             resolve();
@@ -84,7 +84,7 @@ function sendPlanningToEachUser() {
             return task();
         })
         .then(function() {
-            console.log("All done");
+            airbot.logger.debug("All done");
         });
 }
 
@@ -151,7 +151,7 @@ function getGithubIssues(user) {
             return res.body.items;
         })
         .catch(function(err) {
-            console.log("No github planning for '", user, "'");
+            airbot.logger.debug("No github planning for '", user, "'");
         });
 }
 
@@ -307,7 +307,7 @@ function getJiraIssueUrl(issue) {
 
 function sendMessage(username, message) {
     if (debug) {
-        console.log("@" + username, ":", message);
+        airbot.logger.debug("@" + username, ":", message);
     } else {
         airbot.send({
             room: username
@@ -317,7 +317,7 @@ function sendMessage(username, message) {
 
 function sendCustomMessage(username, title, content) {
     if (debug) {
-        console.log("@" + username, "->", title);
+        airbot.logger.debug("@" + username, "->", title);
     } else {
         airbot.adapter.customMessage({
             channel: username,
