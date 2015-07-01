@@ -20,6 +20,7 @@
     "hubot-shipit": "^0.2.0",
     "hubot-slack": "^3.3.0",
     "lodash": "^3.2.0",
+    "moment": "^2.10.3",
     "node-schedule": "^0.2.9"
   },
   "engines": {
