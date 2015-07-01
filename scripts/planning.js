@@ -1,54 +1,123 @@
 /**
- * Description: 
+ * Description:
  *     Get your daily planning
  */
 
-var got = require("got-promise");
-var BPromise = require("bluebird");
 var _ = require("lodash");
+var got = require("got-promise");
+var schedule = require('node-schedule');
+var BPromise = require("bluebird");
+
 var token = process.env.GITHUB_TOKEN;
 var team = require("../team.json");
 
 var jiraCredUser = process.env.JIRA_USER;
 var jiraCredPwd = process.env.JIRA_PWD;
 var auth = new Buffer(jiraCredUser + ":" + jiraCredPwd).toString('base64');
+var blacklist = ["airbot", "air2d2", "slackbot"];
+var airbot;
+var debug = process.env.AIRBOT_PLANNING_DEBUG;
 
 module.exports = function(robot) {
+    airbot = robot;
 
-    robot.hear("planning", function(res) {
-        var user = res.message.user;
-        var room = {
-            room: user.name
-        };
+    // Monday => Friday at 8am.
+    var rule = new schedule.RecurrenceRule();
+    rule.dayOfWeek = [new schedule.Range(1, 5)];
+    rule.hour = 7;
+    rule.minute = 0;
 
-        var greeting = ["Hi *<@", user.name, ">* gimme a minute to retrieve it..."].join("");
-        robot.send(room, greeting);
+    // Daily planning
+    airbot.logger.debug("Scheduling daily planning");
+    schedule.scheduleJob(rule, sendPlanningToEachUser);
 
-        var ghUser = getGithubUser(user.name);
-        var jiraUser = getJiraUser(user.name);
+    // On demand planning
+    airbot.respond("/planning/i", function(res) {
+        var username = res.message.user.name;
 
-        getGithubPlanning(ghUser)
-            .then(function(githubPlanning) {
+        var greeting = ["Hi *<@", username,
+            ">* gimme a minute to retrieve it..."
+        ].join("");
+        sendMessage(username, greeting);
 
-                robot.adapter.customMessage({
-                    channel: user.name,
-                    text: "Here it is",
-                    attachments: githubPlanning
-                });
-
-                return getJiraPlanning(jiraUser);
-            })
-            .then(function(jiraPlanning) {
-
-                robot.adapter.customMessage({
-                    channel: user.name,
-                    text: "Wait... there's more!",
-                    attachments: jiraPlanning
-                });
-            });
+        getFullPlanning(username);
     });
 
 };
+
+function sendPlanningToEachUser() {
+    var allUsers = getDailyPlanningSubscribers();
+
+    var planningTasks = _.map(allUsers, function(user) {
+        var username = user.name;
+        airbot.logger.debug("Build planning task for:", username);
+        if (_.contains(blacklist, username)) {
+            return function() {
+                airbot.logger.debug("Nothing to build for:", username);
+                return BPromise.resolve();
+            };
+        }
+
+        return function() {
+            var greeting = [":alarm_clock: Good morning *<@", username,
+                ">*, I'm just finishing to compile your planning..."
+            ].join("");
+            return greetUser(username, greeting)
+                .then(function() {
+                    return getFullPlanning(username);
+                })
+                .then(function() {
+                    airbot.logger.debug("Wait for 1sec..");
+                    return new BPromise(function(resolve) {
+                        setTimeout(function() {
+                            resolve();
+                        }, 1000);
+                    });
+                })
+                .catch(function(e) {
+                    console.error("Error sending message to", username, "=>", e);
+                });
+        };
+    });
+
+    BPromise.resolve(planningTasks).each(function(task) {
+            return task();
+        })
+        .then(function() {
+            airbot.logger.debug("All done");
+        });
+}
+
+function greetUser(username, message) {
+    return new BPromise(function(resolve, reject) {
+        try {
+            sendMessage(username, message);
+        } catch (e) {
+            reject(e);
+            return;
+        }
+        resolve();
+    });
+}
+
+function getDailyPlanningSubscribers() {
+    // Get all Slack users
+    return airbot.brain.usersForFuzzyName("");
+}
+
+function getFullPlanning(username) {
+    var ghUser = getGithubUser(username);
+    var jiraUser = getJiraUser(username);
+
+    return getGithubPlanning(ghUser)
+        .then(function(githubPlanning) {
+            sendCustomMessage(username, "Here it is", githubPlanning);
+            return getJiraPlanning(jiraUser);
+        })
+        .then(function(jiraPlanning) {
+            sendCustomMessage(username, "Wait... there's more!", jiraPlanning);
+        });
+}
 
 function getGithubUser(slackUser) {
     var result = slackUser;
@@ -69,20 +138,29 @@ function getGithubPlanning(ghUser) {
 }
 
 function getGithubIssues(user) {
-    return got("https://api.github.com/search/issues?q=state:open+assignee:" + user, {
-            json: true,
-            headers: {
-                "accept": "application/vnd.github.v3+json",
-                "authorization": "token " + token,
-                "user-agent": "https://github.com/AirVantage/airbot"
-            }
-        })
+    return got("https://api.github.com/search/issues?q=state:open+assignee:" +
+            user, {
+                json: true,
+                headers: {
+                    "accept": "application/vnd.github.v3+json",
+                    "authorization": "token " + token,
+                    "user-agent": "https://github.com/AirVantage/airbot"
+                }
+            })
         .then(function(res) {
             return res.body.items;
+        })
+        .catch(function(err) {
+            airbot.logger.debug("No github planning for '", user, "'");
         });
 }
 
 function github2Planning(issues) {
+
+    if (!issues) {
+        return BPromise.resolve();
+    }
+
     return new BPromise(function(resolve) {
         var message = "";
         var repositories = {};
@@ -106,13 +184,17 @@ function github2Planning(issues) {
 
             if (issues.prs.length > 0) {
                 _.each(issues.prs, function(issue) {
-                    message += "\t ⎇ <" + issue.html_url + "|#" + issue.number + "> " + issue.title + "\n";
+                    message += "\t ⎇ <" + issue.html_url +
+                        "|#" + issue.number + "> " +
+                        issue.title + "\n";
                 });
             }
 
             if (issues.issues.length > 0) {
                 _.each(issues.issues, function(issue) {
-                    message += "\t 𐌏 <" + issue.html_url + "|#" + issue.number + "> " + issue.title + "\n";
+                    message += "\t 𐌏 <" + issue.html_url +
+                        "|#" + issue.number + "> " +
+                        issue.title + "\n";
                 });
             }
 
@@ -157,14 +239,16 @@ function getJiraPlanning(jiraUser) {
 
 function getJiraIssues(jiraUser) {
 
-    var query = "assignee=" + jiraUser + " AND status in (Open, Incomplete, Reopened) ORDER BY priority DESC";
-    return got("https://issues.sierrawireless.com/rest/api/2/search?jql=" + query, {
-            json: true,
-            headers: {
-                "Authorization": "Basic " + auth,
-                "user-agent": "https://github.com/AirVantage/airbot"
-            }
-        })
+    var query = "assignee=" + jiraUser +
+        " AND status in (Open, Incomplete, Reopened, \"In Progress\") ORDER BY priority DESC";
+    return got("https://issues.sierrawireless.com/rest/api/2/search?jql=" +
+            query, {
+                json: true,
+                headers: {
+                    "Authorization": "Basic " + auth,
+                    "user-agent": "https://github.com/AirVantage/airbot"
+                }
+            })
         .then(function(res) {
             return res.body.issues;
         });
@@ -186,7 +270,10 @@ function jira2Planning(issues) {
             message += " _" + project + "_\n";
             if (issues.length > 0) {
                 _.each(issues, function(issue) {
-                    message += "\t 𐌏 <" + getJiraIssueUrl(issue) + "|" + issue.key + "> " + issue.fields.summary + "\n";
+                    message += "\t 𐌏 <" +
+                        getJiraIssueUrl(issue) + "|" +
+                        issue.key + "> " + issue.fields
+                        .summary + "\n";
                 });
             }
         });
@@ -216,4 +303,26 @@ function getJiraProject(issue) {
 
 function getJiraIssueUrl(issue) {
     return "https://issues.sierrawireless.com/browse/" + issue.key;
+}
+
+function sendMessage(username, message) {
+    if (debug) {
+        airbot.logger.debug("@" + username, ":", message);
+    } else {
+        airbot.send({
+            room: username
+        }, message);
+    }
+}
+
+function sendCustomMessage(username, title, content) {
+    if (debug) {
+        airbot.logger.debug("@" + username, "->", title);
+    } else {
+        airbot.adapter.customMessage({
+            channel: username,
+            text: title,
+            attachments: content
+        });
+    }
 }
