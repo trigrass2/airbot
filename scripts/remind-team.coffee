@@ -4,7 +4,6 @@
 #
 #
 # Dependencies:
-#   "chrono-node": "^0.1.10"
 #   "moment": "^2.8.1"
 #   "lodash": "^2.4.1"
 #
@@ -23,7 +22,6 @@
 
 _ = require('lodash')
 moment = require('moment')
-chrono = require('chrono-node')
 timeoutIds = {}
 
 class Reminders
@@ -150,24 +148,6 @@ module.exports = (robot) ->
     reminders.queue()
     msg.send("Deleted reminder #{query}") if reminders.cache.length isnt prevLength
   )
-
-  # robot.respond(/remind me (in|on) (.+?) to (.*)/i, (msg) ->
-  #   type = msg.match[1]
-  #   time = msg.match[2]
-  #   action = msg.match[3]
-  #   options =
-  #     msg_envelope: msg.envelope,
-  #     action: action
-  #     time: time
-  #   if type is 'on'
-  #     # parse the date (convert to timestamp)
-  #     due = chrono.parseDate(time).getTime()
-  #     if due.toString() isnt 'Invalid Date'
-  #       options.due = due
-  #   reminder = new Reminder(options)
-  #   reminders.add(reminder)
-  #   msg.send "I'll remind you to #{action} #{reminder.formatDue()}"
-  # )
 
   robot.respond /remind (.+) in ((?:(?:\d+) (?:weeks?|days?|hours?|hrs?|minutes?|mins?|seconds?|secs?)[ ,]*(?:and)? +)+)to (.*)/i, (msg) ->
     who = msg.match[1]
