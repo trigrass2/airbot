@@ -63,8 +63,8 @@ class Reminders
       sender=
         room: reminder.msg_envelope.message.user.name 
       console.log reminder.msg_envelope
-      @robot.send(target, reminder.msg_envelope.message.user.name + ' asked me to remind you to ' + reminder.action)
-      @robot.send(sender, 'I just remind ' + reminder.msg_envelope.user.name + ' to ' + reminder.action)
+      @robot.send(target, ':pushpin: ' + reminder.msg_envelope.message.user.name + ' asked me to remind you to ' + reminder.action)
+      @robot.send(sender, ':pushpin: ' + 'I just remind ' + reminder.msg_envelope.user.name + ' to ' + reminder.action)
 
       @queue()
     # setTimeout uses a 32-bit INT
