@@ -5,8 +5,6 @@ AirBot
 ## Setup
 > Bash script and resources to set up a Hubot server on a blank Ubuntu AMI with a blank Volume attached.
 
-## Usage
-
 1. Install packages
   ```bash
   ./install.sh
