@@ -1,6 +1,8 @@
-# airbot
+AirBot
 ========
+> AirBot is a Slack productivity friend for AirVantage engineering team
 
+## Setup
 > Bash script and resources to set up a Hubot server on a blank Ubuntu AMI with a blank Volume attached.
 
 ## Usage
