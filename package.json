@@ -4,6 +4,8 @@
   "private": true,
   "description": "AirVantage bot",
   "dependencies": {
+    "github": "^0.2.4",
+    "twilio": "^2.1.0",
     "bluebird": "^2.9.30",
     "got-promise": "^4.1.0",
     "hubot": "^2.13.2",

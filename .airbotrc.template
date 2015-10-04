@@ -5,6 +5,13 @@ export PORT=8080
 # Hubot API token for slack
 export HUBOT_SLACK_TOKEN=xxx
 
+# Twilio parameters
+export TWILIO_ACCOUNT_SID=xxx
+export TWILIO_AUTH_TOKEN=xxx
+export TWILIO_PHONE_NUMBER=xxx
+
+export DUTY_PHONE=xxx
+
 # Github API Token
 export GITHUB_TOKEN=xxx
 
