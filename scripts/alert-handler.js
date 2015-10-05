@@ -31,9 +31,10 @@ module.exports = function(robot) {
 
     airbot.router.post('/hubot/alert-handler', function(req, res) {
         // Send message to Operation channel
+        /* TODO restore Slack notification
         airbot.send({
-            room: "#operations"
-        }, "@channel Alert!");
+            room: "operations"
+        }, "@channel Alert!");*/
 
         // Voice call to duty phone
         twilio.makeCall({
@@ -47,5 +48,6 @@ module.exports = function(robot) {
                 console.log('Data: ' + data);
             }
         });
+        res.send("OK");
     });
 };
