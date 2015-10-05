@@ -17,15 +17,15 @@ module.exports = function(robot) {
     airbot.router.post('/hubot/alert-twiml', function(req, res) {
         res.send("<Response>" +
             "<Say>AirVantage alert!</Say>" +
-            "<Pause length="2"/>" +
+            "<Pause length=\"2\"/>" +
             "<Say>AirVantage alert!</Say>" +
-            "<Pause length="2"/>" +
+            "<Pause length=\"2\"/>" +
             "<Say>AirVantage alert!</Say>" +
-            "<Pause length="2"/>" +
+            "<Pause length=\"2\"/>" +
             "<Say>AirVantage alert!</Say>" +
-            "<Pause length="2"/>" +
+            "<Pause length=\"2\"/>" +
             "<Say>AirVantage alert!</Say>" +
-            "<Pause length="30"/>" + 
+            "<Pause length=\"30\"/>" +
         "</Response>");
     });
 
