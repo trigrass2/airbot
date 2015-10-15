@@ -29,6 +29,11 @@ module.exports = function(robot) {
         "</Response>");
     });
 
+    // Need to receive alerts from:
+    // - Pingdom
+    // - CloudAMQP
+    // - CloudWatch?
+    // - Loggly?
     airbot.router.post('/hubot/alert-handler', function(req, res) {
         // Send message to Operation channel
         /* TODO restore Slack notification
